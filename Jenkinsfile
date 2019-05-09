@@ -45,11 +45,13 @@ pipeline {
         container('buildbox') {
           sh script: './gradlew clean build allureReport'
         }
+        stash includes: "**/*", name: 'workspace'
       }
     }
     stage('Build and Push') {
       steps {
         container('toolbox') {
+          unstash("workspace")
           script {
             final image = hub.explain(state: params.APP_STATE_FILE).stackOutputs['application.docker.image'] as String
             sh script: "docker build --pull --rm -t ${image}:latest -t ${image}:${gitscm.shortCommit} ."
@@ -68,6 +70,7 @@ pipeline {
       }
       steps {
         container('toolbox') {
+          unstash("workspace")
           script {
             sh script: "hub kubeconfig ${params.APP_STATE_FILE} --switch-kube-context"
             final version = "${gitscm.shortCommit}"
